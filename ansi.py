@@ -16,6 +16,48 @@ DEBUG = False
 AnsiDefinition = namedtuple("AnsiDefinition", "scope regex")
 regex_obj_cache = {}
 
+DEC_GRAPHICS_MAP = {
+    '`': '◆', # diamond
+    'a': '▒', # checker board (stipple)
+
+    'b': '␉', # horizontal tab
+    'c': '␌', # form feed
+    'd': '␍', # carriage return
+    'e': '␊', # line feed
+    'f': '°', # degree
+    'g': '±', # plus-minus
+    'h': '␤', # new line
+    'i': '␋', # vertical tab
+
+    'j': '┘', # lower right corner
+    'k': '┐', # upper right corner
+    'l': '┌', # upper left corner
+    'm': '└', # lower left corner
+    'n': '┼', # crossing lines
+    'o': '⎺', # scan line 1
+
+    'p': '⎻', # scan line 3
+    'q': '─', # horizontal line
+    'r': '⎼', # scan line 7
+    's': '⎽', # scan line 9
+    't': '├', # left tee
+    'u': '┤', # right tee
+    'v': '┴', # bottom tee
+    'w': '┬', # top tee
+    'x': '│', # vertical line
+
+    'y': '≤', # le
+    'z': '≥', # ge
+    '{': 'π', # pi
+    '|': '≠', # ne
+    '}': '£', # pounds
+
+    '~': '·', # bullet
+}
+
+def replace_dec_graphics(m):
+    chars = m.group(1)
+    return ''.join(DEC_GRAPHICS_MAP.get(c,c) for c in chars)
 
 def debug(view, msg):
     if not DEBUG:
@@ -229,6 +271,9 @@ class AnsiCommand(sublime_plugin.TextCommand):
     def _colorize_ansi_codes(self, edit):
         view = self.view
 
+        # replace DEC codes
+        view = re.sub(r"\x1b\(0([`-~]+)\x1b\(B", replace_dec_graphics, view)
+
         # removing unsupported ansi escape codes before going forward: 2m 4m 5m 7m 8m
         ansi_unsupported_codes = fast_view_find_all(view, r"\x1b\[(0;)?[24578]m")
         for r in reversed(ansi_unsupported_codes):
@@ -415,6 +460,9 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
         if not is_ansi_syntax(view):
             super(AnsiColorBuildCommand, self).on_data(proc, data)
             return
+
+        # replace DEC codes
+        data = re.sub(r"\x1b\(0([`-~]+)\x1b\(B", replace_dec_graphics, data)
 
         # replace unsupported ansi escape codes before going forward: 2m 4m 5m 7m 8m
         unsupported_pattern = r"\x1b\[(0;)?[24578]m"
